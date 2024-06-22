@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.chatapp.CommonProgressBar
 import com.example.chatapp.DestinationScreen
 import com.example.chatapp.LCViewModel
 import com.example.chatapp.R
@@ -92,17 +93,26 @@ fun SignUpScreen(navController: NavController, vm: LCViewModel) {
                 modifier = Modifier.padding(8.dp)
             )
             
-            Button(onClick = { /*TODO*/ }, modifier = Modifier.padding(8.dp)) {
+            Button(
+                onClick = { vm.signUp(lcState.name, lcState.number, lcState.email, lcState.password) },
+                modifier = Modifier.padding(8.dp)
+            ) {
                 Text(text = stringResource(id = R.string.sign_up))
             }
 
             Text(
                 text = "Already a user? Go to Login ->",
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(8.dp).clickable {
-                    navigateTo(navController, DestinationScreen.Login.route)
-                },
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clickable {
+                        navigateTo(navController, DestinationScreen.Login.route)
+                    },
             )
         }
+    }
+
+    if (vm.inProgress.value) {
+        CommonProgressBar()
     }
 }

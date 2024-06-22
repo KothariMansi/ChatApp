@@ -23,6 +23,6 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview() {
     ChatAppTheme {
-        LoginScreen(rememberNavController(), LCViewModel())
+        //LoginScreen(rememberNavController(), LCViewModel())
     }
 }
