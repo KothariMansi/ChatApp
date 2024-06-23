@@ -5,7 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.chatapp.data.Event
 import com.example.chatapp.data.LCState
+import com.example.chatapp.data.USER_NODE
+import com.example.chatapp.data.UserData
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.toObject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LCViewModel @Inject constructor(
-    val auth: FirebaseAuth
+    val auth: FirebaseAuth,
+    var db: FirebaseFirestore
 ): ViewModel() {
     private var _uiState = MutableStateFlow(LCState())
     val uiState = _uiState.asStateFlow()
@@ -25,6 +30,8 @@ class LCViewModel @Inject constructor(
     }
     var inProgress = mutableStateOf(false)
     private val eventMutableState = mutableStateOf<Event<String>?>(null)
+    var signIn = mutableStateOf(false)
+    var userDate = mutableStateOf<UserData?>(null)
 
     fun updateUi(
         name: String = _uiState.value.name,
@@ -48,9 +55,49 @@ class LCViewModel @Inject constructor(
         inProgress.value = true
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
             if (it.isSuccessful) {
-                Log.d("TAG", "signUp: User Logged In")
+                signIn.value = true
+                createOrUpdateProfile(name, number)
             } else {
-               // handleException()
+               handleException(exception = it.exception, customMessage = "Sign Up Failed")
+            }
+        }
+    }
+
+    private fun createOrUpdateProfile(name: String? = null, number: String? = null, imageUrl: String? = null) {
+        var uid = auth.currentUser?.uid
+        val userData = UserData(
+            uid,
+            name?: userDate.value?.name,
+            number?: userDate.value?.number,
+            imageUrl?: userDate.value?.imageUrl
+        )
+        uid?.let {
+            inProgress.value = true
+            db.collection(USER_NODE).document(uid).get().addOnSuccessListener {
+                if (it.exists()){
+                    // Todo: Update User Data
+                } else {
+                    db.collection(USER_NODE).document(uid).set(userData)
+                    inProgress.value = false
+                    getUserDate(uid)
+                }
+            }.addOnFailureListener {
+                handleException(it, "Cannot retrieve User")
+            }
+        }
+    }
+
+    private fun getUserDate(uid: String) {
+        inProgress.value = true
+        db.collection(USER_NODE).document(uid).addSnapshotListener{
+            value, error ->
+            if (error!=null) {
+                handleException(error, "Cannot retrieve User")
+            }
+            if (value != null) {
+                var user = value.toObject<UserData>()
+                userDate.value = user
+                inProgress.value = false
             }
         }
     }
