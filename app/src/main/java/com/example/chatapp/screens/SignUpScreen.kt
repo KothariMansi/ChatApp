@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.chatapp.CheckSignedIn
 import com.example.chatapp.CommonProgressBar
 import com.example.chatapp.DestinationScreen
 import com.example.chatapp.LCViewModel
@@ -39,6 +40,8 @@ fun SignUpScreen(navController: NavController, vm: LCViewModel) {
 
     val lcState by vm.uiState.collectAsState()
     val focus = LocalFocusManager.current
+
+    CheckSignedIn(vm, navController)
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -107,6 +110,7 @@ fun SignUpScreen(navController: NavController, vm: LCViewModel) {
                     .padding(8.dp)
                     .clickable {
                         navigateTo(navController, DestinationScreen.Login.route)
+                        vm.clear()
                     },
             )
         }
