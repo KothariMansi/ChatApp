@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -76,7 +77,7 @@ fun  ChatAppNavigation() {
             StatusScreen(navController, vm)
         }
         composable(DestinationScreen.Profile.route) {
-            ProfileScreen(navController, vm)
+            ProfileScreen(navController, vm, LocalContext.current)
         }
 
     }

@@ -4,5 +4,7 @@ data class LCState(
     val name: String = "",
     val number: String = "",
     val email: String = "",
-    val password: String = ""
+    val password: String = "",
+    var userData: UserData = UserData()
+
 )

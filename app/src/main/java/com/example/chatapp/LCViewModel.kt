@@ -1,13 +1,14 @@
 package com.example.chatapp
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.compose.runtime.Composable
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import androidx.navigation.NavController
 import com.example.chatapp.data.Event
 import com.example.chatapp.data.LCState
+import com.example.chatapp.data.TAG
 import com.example.chatapp.data.USER_NODE
 import com.example.chatapp.data.UserData
 import com.google.firebase.auth.FirebaseAuth
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.lang.Exception
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,7 +35,6 @@ class LCViewModel @Inject constructor(
     var inProgress = mutableStateOf(false)
     private val eventMutableState = mutableStateOf<Event<String>?>(null)
     var signIn = mutableStateOf(false)
-    var userDate = mutableStateOf<UserData?>(null)
 
     init {
         val currentUser = auth.currentUser
@@ -49,18 +50,27 @@ class LCViewModel @Inject constructor(
             password = ""
         ) }
     }
+    fun updateProfileContent(name: String = uiState.value.userData.name,
+                             number: String = uiState.value.userData.number,
+                             imageUrl: String = uiState.value.userData.imageUrl
+    ) {
+        _uiState.update {
+            it.copy(
+                userData = UserData(name = name, number = number, imageUrl = imageUrl)
+            )
+        }
+    }
+
     fun updateUi(
-        name: String = _uiState.value.name,
-        number: String = _uiState.value.number,
         email: String = _uiState.value.email,
         password: String = _uiState.value.password
-
 
     ) {
         _uiState.update {
             it.copy(
-                name = name,
-                number = number,
+              //  userData = UserData(name, number),
+               // name = name,
+               // number = number,
                 email = email,
                 password = password
             )
@@ -79,8 +89,8 @@ class LCViewModel @Inject constructor(
                 if (it.isSuccessful) {
                     signIn.value = true
                     inProgress.value = false
-                    auth.currentUser?.uid?.let {
-                        getUserDate(it)
+                    auth.currentUser?.uid?.let {uid ->
+                        getUserDate(uid)
                     }
                 }
                 else {
@@ -90,7 +100,7 @@ class LCViewModel @Inject constructor(
         }
     }
 
-    fun signUp(name: String, number: String, email: String, password: String) {
+    fun signUp(context: Context, name: String, number: String, email: String, password: String) {
         inProgress.value = true
         if (name.isEmpty() && number.isEmpty() && email.isEmpty() && password.isEmpty()) {
             handleException(customMessage = "Please fill all fields.")
@@ -107,7 +117,7 @@ class LCViewModel @Inject constructor(
                 auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
                     if (it.isSuccessful) {
                         signIn.value = true
-                        createOrUpdateProfile(name, number)
+                        createOrUpdateProfile(context, name, number)
                     } else {
                         handleException(exception = it.exception, customMessage = "Sign Up Failed")
                     }
@@ -117,29 +127,42 @@ class LCViewModel @Inject constructor(
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
             if (it.isSuccessful) {
                 signIn.value = true
-                createOrUpdateProfile(name, number)
+                createOrUpdateProfile(context = context,name, number)
             } else {
                 handleException(exception = it.exception, customMessage = "Sign Up Failed")
             }
         }
 
     }
-
-    private fun createOrUpdateProfile(name: String? = null, number: String? = null, imageUrl: String? = null) {
+    fun createOrUpdateProfile(
+        context: Context,
+        name: String = uiState.value.userData.name,
+        number: String = uiState.value.userData.number,
+        imageUrl: String = uiState.value.userData.imageUrl
+    ) {
         var uid = auth.currentUser?.uid
-        val userData = UserData(
-            uid,
-            name?: userDate.value?.name,
-            number?: userDate.value?.number,
-            imageUrl?: userDate.value?.imageUrl
-        )
+        val userData = uid?.let {
+            UserData(
+                it,
+                name= uiState.value.userData.name,
+                number= uiState.value.userData.number,
+                imageUrl= uiState.value.userData.imageUrl
+            )
+        }
         uid?.let {
             inProgress.value = true
             db.collection(USER_NODE).document(uid).get().addOnSuccessListener {
                 if (it.exists()){
+                    //Toast.makeText(context, "Updating", Toast.LENGTH_SHORT).show()
+                    val updates = hashMapOf("name" to name, "number" to number, "imageUrl" to imageUrl)
+                    db.collection(USER_NODE).document(uid).update(updates as Map<String, Any>)
                     // Todo: Update User Data
+                    inProgress.value = false
+                    Toast.makeText(context, "Updated", Toast.LENGTH_SHORT).show()
                 } else {
-                    db.collection(USER_NODE).document(uid).set(userData)
+                    if (userData != null) {
+                        db.collection(USER_NODE).document(uid).set(userData)
+                    }
                     inProgress.value = false
                     getUserDate(uid)
                 }
@@ -147,6 +170,7 @@ class LCViewModel @Inject constructor(
                 handleException(it, "Cannot retrieve User")
             }
         }
+
     }
 
     private fun getUserDate(uid: String) {
@@ -158,14 +182,16 @@ class LCViewModel @Inject constructor(
             }
             if (value != null) {
                 var user = value.toObject<UserData>()
-                userDate.value = user
+                if (user != null) {
+                    uiState.value.userData = user
+                }
                 inProgress.value = false
             }
         }
     }
 
     private fun handleException(exception: Exception?=null, customMessage:String = "") {
-        Log.e("TAG", "Live chat Exception: $exception")
+        Log.e(TAG, "Live chat Exception: $exception")
         exception?.printStackTrace()
         val errorMsg = exception?.localizedMessage?: ""
         val message = customMessage.ifEmpty { errorMsg }
@@ -173,13 +199,32 @@ class LCViewModel @Inject constructor(
         inProgress.value = false
     }
 
-    fun uploadProfileImage(uri: Uri) {
-        //uploadImage(){}
+    fun uploadProfileImage(context: Context, uri: Uri) {
+        uploadImage(context, uri){
+            //Toast.makeText(context, uri.toString(), Toast.LENGTH_SHORT).show()
+            updateProfileContent(imageUrl = it.toString())
+            //createOrUpdateProfileNew(context, imageUrl = it.toString())
+        }
     }
 
-    private fun uploadImage(uri: Uri, onSuccess: (Uri) -> Unit) {
+    private fun uploadImage(context: Context, uri: Uri, onSuccess: (Uri) -> Unit) {
         inProgress.value = true
         val storageRef = storage.reference
+        val uuid = UUID.randomUUID()
+        val imageRef = storageRef.child("image/$uuid")
+        val uploadTask = imageRef.putFile(uri)
+       // Toast.makeText(context, "Image Progress", Toast.LENGTH_SHORT).show()
+        uploadTask.addOnSuccessListener {
+           // Toast.makeText(context, "SuccessListener Image", Toast.LENGTH_SHORT).show()
+            val result = it.metadata?.reference?.downloadUrl
+            result?.addOnSuccessListener(onSuccess)
+            inProgress.value = false
+        }
+            .addOnFailureListener{
+                Toast.makeText(context, "Failure Listener Image", Toast.LENGTH_SHORT).show()
+
+                handleException(it)
+            }
     }
 
 }

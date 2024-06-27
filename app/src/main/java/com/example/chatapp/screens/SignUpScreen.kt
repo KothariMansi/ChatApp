@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,7 +38,7 @@ import com.example.chatapp.navigateTo
 
 @Composable
 fun SignUpScreen(navController: NavController, vm: LCViewModel) {
-
+    val context = LocalContext.current
     val lcState by vm.uiState.collectAsState()
     val focus = LocalFocusManager.current
 
@@ -72,14 +73,14 @@ fun SignUpScreen(navController: NavController, vm: LCViewModel) {
             )
 
             OutlinedTextField(
-                value = lcState.name,
-                onValueChange = { vm.updateUi(name = it) },
+                value = lcState.userData.name,
+                onValueChange = { vm.updateProfileContent(name = it) },
                 label = { Text(text = stringResource(R.string.name)) },
                 modifier = Modifier.padding(8.dp)
             )
             OutlinedTextField(
-                value = lcState.number,
-                onValueChange = {vm.updateUi(number = it)} ,
+                value = lcState.userData.number,
+                onValueChange = {vm.updateProfileContent(number = it)} ,
                 label = { Text(text = stringResource(R.string.phone)) },
                 modifier = Modifier.padding(8.dp)
             )
@@ -97,7 +98,7 @@ fun SignUpScreen(navController: NavController, vm: LCViewModel) {
             )
             
             Button(
-                onClick = { vm.signUp(lcState.name, lcState.number, lcState.email, lcState.password) },
+                onClick = { vm.signUp(context = context,lcState.userData.name, lcState.userData.number, lcState.email, lcState.password) },
                 modifier = Modifier.padding(8.dp)
             ) {
                 Text(text = stringResource(id = R.string.sign_up))
