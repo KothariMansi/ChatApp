@@ -227,4 +227,24 @@ class LCViewModel @Inject constructor(
             }
     }
 
+    fun onLogOut() {
+        auth.signOut()
+        signIn.value = false
+        _uiState.update { it.copy(userData = UserData("","","","")) }
+        eventMutableState.value = Event("Logged Out")
+    }
+
+    fun updateChatNumber(chatMember: String) {
+        _uiState.update { it.copy(
+            addChatNumber = chatMember
+        ) }
+    }
+    fun updateShowDialog(showDialog: Boolean) {
+        _uiState.update { it.copy(isShowDialog = showDialog) }
+    }
+
+    fun updateChatProgress(inProgress: Boolean) {
+        _uiState.update { it.copy(chatInProgress = inProgress) }
+    }
+
 }

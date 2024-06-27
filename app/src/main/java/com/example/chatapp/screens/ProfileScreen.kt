@@ -93,7 +93,8 @@ fun ProfileScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(8.dp),
                 vm = vm,
-                context = context
+                context = context,
+                navigate = { navigateTo(navController, DestinationScreen.Login.route) }
             )
         }
     }
@@ -104,8 +105,9 @@ fun ProfileScreen(
 @Composable
 fun ProfileContent(
     context: Context,
-    modifier: Modifier,
     vm: LCViewModel,
+    navigate:() -> Unit,
+    modifier: Modifier,
     //name: String,
    // number: String
 ) {
@@ -118,7 +120,9 @@ fun ProfileContent(
         .fillMaxWidth()
         .padding(4.dp), verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = stringResource(id = R.string.name), modifier = Modifier.weight(1f).padding(start = 16.dp, top = 8.dp))
+        Text(text = stringResource(id = R.string.name), modifier = Modifier
+            .weight(1f)
+            .padding(start = 16.dp, top = 8.dp))
         lcState.userData.name.let { name ->
             TextField(
                 value = name,
@@ -127,7 +131,9 @@ fun ProfileContent(
                     focusedTextColor = MaterialTheme.colorScheme.primary,
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                modifier = Modifier.weight(3f).padding(horizontal = 8.dp)
+                modifier = Modifier
+                    .weight(3f)
+                    .padding(horizontal = 8.dp)
             )
         }
     }
@@ -137,7 +143,9 @@ fun ProfileContent(
             .fillMaxWidth()
             .padding(4.dp), verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = stringResource(id = R.string.phone), modifier = Modifier.weight(1f).padding(start = 16.dp, top = 8.dp))
+        Text(text = stringResource(id = R.string.phone), modifier = Modifier
+            .weight(1f)
+            .padding(start = 16.dp, top = 8.dp))
         lcState.userData.number.let {
             TextField(
                 value = it,
@@ -147,7 +155,9 @@ fun ProfileContent(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     unfocusedTextColor = MaterialTheme.colorScheme.secondary,
                 ),
-                modifier = Modifier.weight(3f).padding(horizontal = 8.dp)
+                modifier = Modifier
+                    .weight(3f)
+                    .padding(horizontal = 8.dp)
             )
         }
     }
@@ -157,10 +167,11 @@ fun ProfileContent(
             .fillMaxWidth()
             .padding(16.dp)
             .clickable {
-                //vm.onLogOut()
+                vm.onLogOut()
+                navigate()
             },
         horizontalArrangement = Arrangement.Center) {
-
+            Text(text = "LogOut")
     }
 }
 
