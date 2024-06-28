@@ -17,6 +17,7 @@ import com.example.chatapp.screens.ChatListScreen
 import com.example.chatapp.screens.LoginScreen
 import com.example.chatapp.screens.ProfileScreen
 import com.example.chatapp.screens.SignUpScreen
+import com.example.chatapp.screens.SingleChatScreen
 import com.example.chatapp.screens.StatusScreen
 import com.example.chatapp.ui.theme.ChatAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -73,12 +74,19 @@ fun  ChatAppNavigation() {
         composable(DestinationScreen.ChatList.route) {
             ChatListScreen(navController, vm)
         }
+        composable(DestinationScreen.SingleChat.route) {
+            val chatId = it.arguments?.getString("chatId")
+            chatId?.let {
+                SingleChatScreen(navController, vm, chatId)
+            }
+        }
         composable(DestinationScreen.StatusList.route) {
             StatusScreen(navController, vm)
         }
         composable(DestinationScreen.Profile.route) {
             ProfileScreen(navController, vm, LocalContext.current)
         }
+
 
     }
     //LoginScreen()

@@ -5,15 +5,21 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.text.isDigitsOnly
 import androidx.lifecycle.ViewModel
+import com.example.chatapp.data.CHATS
+import com.example.chatapp.data.ChatData
+import com.example.chatapp.data.ChatUser
 import com.example.chatapp.data.Event
 import com.example.chatapp.data.LCState
 import com.example.chatapp.data.TAG
 import com.example.chatapp.data.USER_NODE
 import com.example.chatapp.data.UserData
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.toObject
+import com.google.firebase.firestore.toObjects
 import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,6 +193,7 @@ class LCViewModel @Inject constructor(
                 }
                 inProgress.value = false
             }
+            populateChats()
         }
     }
 
@@ -201,9 +208,7 @@ class LCViewModel @Inject constructor(
 
     fun uploadProfileImage(context: Context, uri: Uri) {
         uploadImage(context, uri){
-            //Toast.makeText(context, uri.toString(), Toast.LENGTH_SHORT).show()
             updateProfileContent(imageUrl = it.toString())
-            //createOrUpdateProfileNew(context, imageUrl = it.toString())
         }
     }
 
@@ -222,7 +227,6 @@ class LCViewModel @Inject constructor(
         }
             .addOnFailureListener{
                 Toast.makeText(context, "Failure Listener Image", Toast.LENGTH_SHORT).show()
-
                 handleException(it)
             }
     }
@@ -243,8 +247,82 @@ class LCViewModel @Inject constructor(
         _uiState.update { it.copy(isShowDialog = showDialog) }
     }
 
-    fun updateChatProgress(inProgress: Boolean) {
-        _uiState.update { it.copy(chatInProgress = inProgress) }
+    private fun updateChatProgress(chatInProgress: Boolean) {
+        _uiState.update { it.copy(chatInProgress = chatInProgress) }
+    }
+
+    fun onAddChat(number: String) {
+        // updateChatProgress(true)
+        if (number.isEmpty() or !number.isDigitsOnly()){
+            handleException(customMessage = "Not Valid Number")
+        }else{
+            db.collection(CHATS).where(Filter.or(
+                Filter.and(
+                    Filter.equalTo("user1.number", number),
+                    Filter.equalTo("user2.number", uiState.value.userData.number)
+                ),
+               Filter.and(
+                   Filter.equalTo("user1.number",  uiState.value.userData.number),
+                   Filter.equalTo("user2.number",number)
+               )
+            )).get().addOnSuccessListener {
+                if (it.isEmpty) {
+                    db.collection(USER_NODE).whereEqualTo("number", number).get().addOnSuccessListener {
+                        if (it.isEmpty) {
+                            handleException(customMessage = "number not found")
+                        }else{
+                            val chatPartners = it.toObjects<UserData>()[0]
+                            val id = db.collection(CHATS).document().id
+                            val chat = ChatData(
+                                chatId = id,
+                                user1 = ChatUser(
+                                    uiState.value.userData.userId,
+                                    uiState.value.userData.name,
+                                    uiState.value.userData.imageUrl,
+                                    uiState.value.userData.number,
+                                ),
+                                user2 = ChatUser(
+                                    chatPartners.userId,
+                                    chatPartners.name,
+                                    chatPartners.imageUrl,
+                                    chatPartners.number
+                                )
+                            )
+                            db.collection(CHATS).document(id).set(chat)
+                        }
+                    }.addOnFailureListener {ex ->
+                        handleException(ex)
+                    }
+                }
+                else{
+                    handleException(customMessage = "Chats Already exists")
+                }
+            }
+        }
+        // updateChatProgress(false)
+    }
+
+    private fun populateChats() {
+        updateChatProgress(true)
+        db.collection(CHATS).where(
+            Filter.or(
+                Filter.equalTo("user1.userId", uiState.value.userData.userId),
+                Filter.equalTo("user2.userId", uiState.value.userData.userId)
+            )
+        ).addSnapshotListener{value, error ->
+            if (error != null) {
+                handleException(error)
+            }
+            if (value != null) {
+                _uiState.update {state ->
+                    state.copy(
+                        chats = value.documents.mapNotNull {
+                            it.toObject<ChatData>()
+                        })
+                }
+                updateChatProgress(false)
+            }
+        }
     }
 
 }
