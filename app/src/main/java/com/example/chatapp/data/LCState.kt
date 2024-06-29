@@ -11,5 +11,9 @@ data class LCState(
     val addChatNumber: String = "",
     val isShowDialog: Boolean = false,
     val chatInProgress:Boolean = false,
-    val chats: List<ChatData> = listOf()
+    val chats: List<ChatData> = listOf(),
+    val reply:  String = "",
+    val chatMessage: List<Message> = listOf(),
+    val inProgressChatMessage: Boolean = false,
+
 )

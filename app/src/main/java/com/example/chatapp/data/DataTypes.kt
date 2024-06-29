@@ -20,3 +20,9 @@ data class ChatUser(
     val number: String = ""
 
 )
+
+data class Message(
+    var sendBy: String = "",
+    val message: String = "",
+    val time: String = ""
+)

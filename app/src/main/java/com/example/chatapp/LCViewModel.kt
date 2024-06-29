@@ -12,12 +12,15 @@ import com.example.chatapp.data.ChatData
 import com.example.chatapp.data.ChatUser
 import com.example.chatapp.data.Event
 import com.example.chatapp.data.LCState
+import com.example.chatapp.data.MESSAGE
+import com.example.chatapp.data.Message
 import com.example.chatapp.data.TAG
 import com.example.chatapp.data.USER_NODE
 import com.example.chatapp.data.UserData
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.toObject
 import com.google.firebase.firestore.toObjects
 import com.google.firebase.storage.FirebaseStorage
@@ -26,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.lang.Exception
+import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
 
@@ -323,6 +327,42 @@ class LCViewModel @Inject constructor(
                 updateChatProgress(false)
             }
         }
+    }
+
+    fun updateReply(reply: String) {
+        _uiState.update { it.copy(reply = reply) }
+    }
+
+    fun onSendReply(chatId: String, message: String) {
+        val time = Calendar.getInstance().time.toString()
+        val msg = Message(uiState.value.userData.userId, message, time)
+        db.collection(CHATS).document(chatId).collection(MESSAGE).document().set(msg)
+    }
+    private var currentChatMessageListener: ListenerRegistration? = null
+
+    fun populateMessage(chatId: String) {
+        _uiState.update { it.copy(inProgressChatMessage = true) }
+        currentChatMessageListener = db.collection(CHATS).document(chatId).collection(MESSAGE).addSnapshotListener{value, error ->
+            if (error != null) {
+                handleException(error)
+            } else {
+                if (value != null) {
+                    _uiState.update { it.copy(
+                        chatMessage = value.documents.mapNotNull {
+                            it.toObject<Message>()
+                        }.sortedBy { it.time },
+                        inProgressChatMessage = false
+                    ) }
+                }
+            }
+        }
+    }
+
+    fun depopulateMessage() {
+        _uiState.update { it.copy(
+            chatMessage = listOf(),
+        ) }
+        currentChatMessageListener = null
     }
 
 }

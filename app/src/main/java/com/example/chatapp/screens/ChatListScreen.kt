@@ -117,7 +117,7 @@ fun ChatListScreen(
                         .fillMaxWidth()
                         .clickable {
                         if (chat.chatId != ""){
-                            navigateTo(navController, DestinationScreen.SingleChat.createRoute(id = chatUser.userId))
+                            navigateTo(navController, DestinationScreen.SingleChat.createRoute(id = chat.chatId))
                         }
                     }) {
                         CommonImage(
