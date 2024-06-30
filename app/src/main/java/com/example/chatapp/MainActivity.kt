@@ -45,6 +45,7 @@ sealed class DestinationScreen(var route: String) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             ChatAppTheme {
                 // A surface container using the 'background' color from the theme
