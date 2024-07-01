@@ -1,7 +1,5 @@
 package com.example.chatapp.data
 
-import androidx.compose.runtime.mutableStateOf
-
 data class LCState(
     //val name: String = "",
     //val number: String = "",
@@ -15,5 +13,6 @@ data class LCState(
     val reply:  String = "",
     val chatMessage: List<Message> = listOf(),
     val inProgressChatMessage: Boolean = false,
-
+    val status: List<Status> = listOf(),
+    val inProgressStatus: Boolean = false
 )

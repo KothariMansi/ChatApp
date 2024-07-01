@@ -1,5 +1,7 @@
 package com.example.chatapp.data
 
+import java.sql.Timestamp
+
 data class UserData(
     var userId: String = "",
     var name: String = "",
@@ -25,4 +27,10 @@ data class Message(
     var sendBy: String = "",
     val message: String = "",
     val time: String = ""
+)
+
+data class Status(
+    val user: ChatUser = ChatUser(),
+    val imageUrl: String = "",
+    val timestamp: Long = 0
 )

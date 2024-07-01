@@ -14,6 +14,8 @@ import com.example.chatapp.data.Event
 import com.example.chatapp.data.LCState
 import com.example.chatapp.data.MESSAGE
 import com.example.chatapp.data.Message
+import com.example.chatapp.data.STATUS
+import com.example.chatapp.data.Status
 import com.example.chatapp.data.TAG
 import com.example.chatapp.data.USER_NODE
 import com.example.chatapp.data.UserData
@@ -38,13 +40,14 @@ class LCViewModel @Inject constructor(
     private val auth: FirebaseAuth,
     private var db: FirebaseFirestore,
     private var storage: FirebaseStorage
-): ViewModel() {
+) : ViewModel() {
     private var _uiState = MutableStateFlow(LCState())
     val uiState = _uiState.asStateFlow()
 
     var inProgress = mutableStateOf(false)
     private val eventMutableState = mutableStateOf<Event<String>?>(null)
     var signIn = mutableStateOf(false)
+    private var currentChatMessageListener: ListenerRegistration? = null
 
     init {
         val currentUser = auth.currentUser
@@ -54,15 +57,20 @@ class LCViewModel @Inject constructor(
         }
 
     }
+
     fun clear() {
-        _uiState.update { it.copy(
-            email = "",
-            password = ""
-        ) }
+        _uiState.update {
+            it.copy(
+                email = "",
+                password = ""
+            )
+        }
     }
-    fun updateProfileContent(name: String = uiState.value.userData.name,
-                             number: String = uiState.value.userData.number,
-                             imageUrl: String = uiState.value.userData.imageUrl
+
+    fun updateProfileContent(
+        name: String = uiState.value.userData.name,
+        number: String = uiState.value.userData.number,
+        imageUrl: String = uiState.value.userData.imageUrl
     ) {
         _uiState.update {
             it.copy(
@@ -78,9 +86,9 @@ class LCViewModel @Inject constructor(
     ) {
         _uiState.update {
             it.copy(
-              //  userData = UserData(name, number),
-               // name = name,
-               // number = number,
+                //  userData = UserData(name, number),
+                // name = name,
+                // number = number,
                 email = email,
                 password = password
             )
@@ -92,18 +100,16 @@ class LCViewModel @Inject constructor(
 
             handleException(customMessage = "Please fill all details")
             return
-        }
-        else {
+        } else {
             inProgress.value = true
             auth.signInWithEmailAndPassword(email, password).addOnCompleteListener {
                 if (it.isSuccessful) {
                     signIn.value = true
                     inProgress.value = false
-                    auth.currentUser?.uid?.let {uid ->
+                    auth.currentUser?.uid?.let { uid ->
                         getUserDate(uid)
                     }
-                }
-                else {
+                } else {
                     handleException(it.exception, "Login Failed")
                 }
             }
@@ -122,9 +128,8 @@ class LCViewModel @Inject constructor(
                 handleException(customMessage = "Number Already Exists")
                 inProgress.value = true
                 //return@addOnSuccessListener
-            }
-            else {
-                auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
+            } else {
+                auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener {
                     if (it.isSuccessful) {
                         signIn.value = true
                         createOrUpdateProfile(context, name, number)
@@ -134,16 +139,17 @@ class LCViewModel @Inject constructor(
                 }
             }
         }
-        auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
+        auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener {
             if (it.isSuccessful) {
                 signIn.value = true
-                createOrUpdateProfile(context = context,name, number)
+                createOrUpdateProfile(context = context, name, number)
             } else {
                 handleException(exception = it.exception, customMessage = "Sign Up Failed")
             }
         }
 
     }
+
     fun createOrUpdateProfile(
         context: Context,
         name: String = uiState.value.userData.name,
@@ -154,17 +160,18 @@ class LCViewModel @Inject constructor(
         val userData = uid?.let {
             UserData(
                 it,
-                name= uiState.value.userData.name,
-                number= uiState.value.userData.number,
-                imageUrl= uiState.value.userData.imageUrl
+                name = uiState.value.userData.name,
+                number = uiState.value.userData.number,
+                imageUrl = uiState.value.userData.imageUrl
             )
         }
         uid?.let {
             inProgress.value = true
             db.collection(USER_NODE).document(uid).get().addOnSuccessListener {
-                if (it.exists()){
+                if (it.exists()) {
                     //Toast.makeText(context, "Updating", Toast.LENGTH_SHORT).show()
-                    val updates = hashMapOf("name" to name, "number" to number, "imageUrl" to imageUrl)
+                    val updates =
+                        hashMapOf("name" to name, "number" to number, "imageUrl" to imageUrl)
                     db.collection(USER_NODE).document(uid).update(updates as Map<String, Any>)
                     // Todo: Update User Data
                     inProgress.value = false
@@ -185,9 +192,8 @@ class LCViewModel @Inject constructor(
 
     private fun getUserDate(uid: String) {
         inProgress.value = true
-        db.collection(USER_NODE).document(uid).addSnapshotListener{
-            value, error ->
-            if (error!=null) {
+        db.collection(USER_NODE).document(uid).addSnapshotListener { value, error ->
+            if (error != null) {
                 handleException(error, "Cannot retrieve User")
             }
             if (value != null) {
@@ -198,20 +204,21 @@ class LCViewModel @Inject constructor(
                 inProgress.value = false
             }
             populateChats()
+            populateStatus()
         }
     }
 
-    private fun handleException(exception: Exception?=null, customMessage:String = "") {
+    private fun handleException(exception: Exception? = null, customMessage: String = "") {
         Log.e(TAG, "Live chat Exception: $exception")
         exception?.printStackTrace()
-        val errorMsg = exception?.localizedMessage?: ""
+        val errorMsg = exception?.localizedMessage ?: ""
         val message = customMessage.ifEmpty { errorMsg }
         eventMutableState.value = Event(message)
         inProgress.value = false
     }
 
     fun uploadProfileImage(context: Context, uri: Uri) {
-        uploadImage(context, uri){
+        uploadImage(context, uri) {
             updateProfileContent(imageUrl = it.toString())
         }
     }
@@ -222,14 +229,14 @@ class LCViewModel @Inject constructor(
         val uuid = UUID.randomUUID()
         val imageRef = storageRef.child("image/$uuid")
         val uploadTask = imageRef.putFile(uri)
-       // Toast.makeText(context, "Image Progress", Toast.LENGTH_SHORT).show()
+        // Toast.makeText(context, "Image Progress", Toast.LENGTH_SHORT).show()
         uploadTask.addOnSuccessListener {
-           // Toast.makeText(context, "SuccessListener Image", Toast.LENGTH_SHORT).show()
+            // Toast.makeText(context, "SuccessListener Image", Toast.LENGTH_SHORT).show()
             val result = it.metadata?.reference?.downloadUrl
             result?.addOnSuccessListener(onSuccess)
             inProgress.value = false
         }
-            .addOnFailureListener{
+            .addOnFailureListener {
                 Toast.makeText(context, "Failure Listener Image", Toast.LENGTH_SHORT).show()
                 handleException(it)
             }
@@ -238,15 +245,18 @@ class LCViewModel @Inject constructor(
     fun onLogOut() {
         auth.signOut()
         signIn.value = false
-        _uiState.update { it.copy(userData = UserData("","","","")) }
+        _uiState.update { it.copy(userData = UserData("", "", "", "")) }
         eventMutableState.value = Event("Logged Out")
     }
 
     fun updateChatNumber(chatMember: String) {
-        _uiState.update { it.copy(
-            addChatNumber = chatMember
-        ) }
+        _uiState.update {
+            it.copy(
+                addChatNumber = chatMember
+            )
+        }
     }
+
     fun updateShowDialog(showDialog: Boolean) {
         _uiState.update { it.copy(isShowDialog = showDialog) }
     }
@@ -257,48 +267,50 @@ class LCViewModel @Inject constructor(
 
     fun onAddChat(number: String) {
         // updateChatProgress(true)
-        if (number.isEmpty() or !number.isDigitsOnly()){
+        if (number.isEmpty() or !number.isDigitsOnly()) {
             handleException(customMessage = "Not Valid Number")
-        }else{
-            db.collection(CHATS).where(Filter.or(
-                Filter.and(
-                    Filter.equalTo("user1.number", number),
-                    Filter.equalTo("user2.number", uiState.value.userData.number)
-                ),
-               Filter.and(
-                   Filter.equalTo("user1.number",  uiState.value.userData.number),
-                   Filter.equalTo("user2.number",number)
-               )
-            )).get().addOnSuccessListener {
+        } else {
+            db.collection(CHATS).where(
+                Filter.or(
+                    Filter.and(
+                        Filter.equalTo("user1.number", number),
+                        Filter.equalTo("user2.number", uiState.value.userData.number)
+                    ),
+                    Filter.and(
+                        Filter.equalTo("user1.number", uiState.value.userData.number),
+                        Filter.equalTo("user2.number", number)
+                    )
+                )
+            ).get().addOnSuccessListener {
                 if (it.isEmpty) {
-                    db.collection(USER_NODE).whereEqualTo("number", number).get().addOnSuccessListener {
-                        if (it.isEmpty) {
-                            handleException(customMessage = "number not found")
-                        }else{
-                            val chatPartners = it.toObjects<UserData>()[0]
-                            val id = db.collection(CHATS).document().id
-                            val chat = ChatData(
-                                chatId = id,
-                                user1 = ChatUser(
-                                    uiState.value.userData.userId,
-                                    uiState.value.userData.name,
-                                    uiState.value.userData.imageUrl,
-                                    uiState.value.userData.number,
-                                ),
-                                user2 = ChatUser(
-                                    chatPartners.userId,
-                                    chatPartners.name,
-                                    chatPartners.imageUrl,
-                                    chatPartners.number
+                    db.collection(USER_NODE).whereEqualTo("number", number).get()
+                        .addOnSuccessListener {
+                            if (it.isEmpty) {
+                                handleException(customMessage = "number not found")
+                            } else {
+                                val chatPartners = it.toObjects<UserData>()[0]
+                                val id = db.collection(CHATS).document().id
+                                val chat = ChatData(
+                                    chatId = id,
+                                    user1 = ChatUser(
+                                        uiState.value.userData.userId,
+                                        uiState.value.userData.name,
+                                        uiState.value.userData.imageUrl,
+                                        uiState.value.userData.number,
+                                    ),
+                                    user2 = ChatUser(
+                                        chatPartners.userId,
+                                        chatPartners.name,
+                                        chatPartners.imageUrl,
+                                        chatPartners.number
+                                    )
                                 )
-                            )
-                            db.collection(CHATS).document(id).set(chat)
+                                db.collection(CHATS).document(id).set(chat)
+                            }
+                        }.addOnFailureListener { ex ->
+                            handleException(ex)
                         }
-                    }.addOnFailureListener {ex ->
-                        handleException(ex)
-                    }
-                }
-                else{
+                } else {
                     handleException(customMessage = "Chats Already exists")
                 }
             }
@@ -313,12 +325,12 @@ class LCViewModel @Inject constructor(
                 Filter.equalTo("user1.userId", uiState.value.userData.userId),
                 Filter.equalTo("user2.userId", uiState.value.userData.userId)
             )
-        ).addSnapshotListener{value, error ->
+        ).addSnapshotListener { value, error ->
             if (error != null) {
                 handleException(error)
             }
             if (value != null) {
-                _uiState.update {state ->
+                _uiState.update { state ->
                     state.copy(
                         chats = value.documents.mapNotNull {
                             it.toObject<ChatData>()
@@ -338,31 +350,103 @@ class LCViewModel @Inject constructor(
         val msg = Message(uiState.value.userData.userId, message, time)
         db.collection(CHATS).document(chatId).collection(MESSAGE).document().set(msg)
     }
-    private var currentChatMessageListener: ListenerRegistration? = null
 
     fun populateMessage(chatId: String) {
         _uiState.update { it.copy(inProgressChatMessage = true) }
-        currentChatMessageListener = db.collection(CHATS).document(chatId).collection(MESSAGE).addSnapshotListener{value, error ->
+        currentChatMessageListener = db.collection(CHATS).document(chatId).collection(MESSAGE)
+            .addSnapshotListener { value, error ->
+                if (error != null) {
+                    handleException(error)
+                } else {
+                    if (value != null) {
+                        _uiState.update {
+                            it.copy(
+                                chatMessage = value.documents.mapNotNull {
+                                    it.toObject<Message>()
+                                }.sortedBy { it.time },
+                                inProgressChatMessage = false
+                            )
+                        }
+                    }
+                }
+            }
+    }
+
+    fun depopulateMessage() {
+        _uiState.update {
+            it.copy(
+                chatMessage = listOf(),
+            )
+        }
+        currentChatMessageListener = null
+    }
+
+    fun uploadStatus(uri: Uri, context: Context) {
+        uploadImage(
+            context,
+            uri
+        ) {
+            createStatus(it.toString())
+        }
+    }
+
+    private fun createStatus(imageUrl: String) {
+        val newStatus = Status(
+            ChatUser(
+                uiState.value.userData.userId,
+                uiState.value.userData.name,
+                uiState.value.userData.imageUrl,
+                uiState.value.userData.number
+            ),
+            imageUrl,
+            timestamp = System.currentTimeMillis()
+        )
+        db.collection(STATUS).document().set(newStatus)
+    }
+
+    private fun populateStatus() {
+        val timeDlta = 24L * 60 * 60 * 1000
+        val cutoff = System.currentTimeMillis() - timeDlta
+        _uiState.update { it.copy(inProgressStatus = true) }
+        db.collection(CHATS).where(
+            Filter.or(
+                Filter.equalTo("user1.userId", uiState.value.userData.userId),
+                Filter.equalTo("user2.userId", uiState.value.userData.userId)
+            )
+        ).addSnapshotListener { value, error ->
             if (error != null) {
                 handleException(error)
             } else {
                 if (value != null) {
-                    _uiState.update { it.copy(
-                        chatMessage = value.documents.mapNotNull {
-                            it.toObject<Message>()
-                        }.sortedBy { it.time },
-                        inProgressChatMessage = false
-                    ) }
+                    val currentConnections = arrayListOf(uiState.value.userData.userId)
+                    val chats = value.toObjects<ChatData>()
+                    chats.forEach { chat ->
+                        if (chat.user1.userId == uiState.value.userData.userId) {
+                            currentConnections.add(chat.user2.userId)
+                        } else {
+                            currentConnections.add(chat.user1.userId)
+                        }
+                    }
+                    db.collection(STATUS).whereGreaterThan("timestamp", cutoff).whereIn("user.userId", currentConnections)
+                        .addSnapshotListener { value, error ->
+                            if (error != null) {
+                                handleException(error)
+                            } else {
+                                if (value != null) {
+                                    _uiState.update {
+                                        it.copy(
+                                            status =value.toObjects(),
+                                            inProgressStatus = false
+                                        )
+                                    }
+                                }
+                            }
+
+                        }
+
                 }
             }
         }
-    }
-
-    fun depopulateMessage() {
-        _uiState.update { it.copy(
-            chatMessage = listOf(),
-        ) }
-        currentChatMessageListener = null
     }
 
 }

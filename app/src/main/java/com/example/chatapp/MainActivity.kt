@@ -19,6 +19,7 @@ import com.example.chatapp.screens.LoginScreen
 import com.example.chatapp.screens.ProfileScreen
 import com.example.chatapp.screens.SignUpScreen
 import com.example.chatapp.screens.SingleChatScreen
+import com.example.chatapp.screens.SingleStatusScreen
 import com.example.chatapp.screens.StatusScreen
 import com.example.chatapp.ui.theme.ChatAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,7 +36,7 @@ sealed class DestinationScreen(var route: String) {
     }
     object StatusList: DestinationScreen("statusList")
     object SingleStatus: DestinationScreen("singleStatus/{statusId}") { // used statusId instead of userId.
-        fun createRote(statusId: String) = "singleStatus/$statusId"
+        fun createRoute(statusId: String) = "singleStatus/$statusId"
     }
 
 
@@ -84,6 +85,12 @@ fun  ChatAppNavigation() {
         }
         composable(DestinationScreen.StatusList.route) {
             StatusScreen(navController, vm)
+        }
+        composable(DestinationScreen.SingleStatus.route) {
+            val userId = it.arguments?.getString("userId")
+            userId?.let {
+                SingleStatusScreen(navController, vm, userId)
+            }
         }
         composable(DestinationScreen.Profile.route) {
             ProfileScreen(navController, vm, LocalContext.current)

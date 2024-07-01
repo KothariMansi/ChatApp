@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.chatapp.CommonImage
 import com.example.chatapp.CommonProgressBar
+import com.example.chatapp.CommonRow
 import com.example.chatapp.DestinationScreen
 import com.example.chatapp.LCViewModel
 import com.example.chatapp.R
@@ -66,68 +67,73 @@ fun ChatListScreen(
             uiState = uiState
 
         )
-    }
-
-
-
-    Scaffold(
-        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer),
-        topBar = {
-            TopAppBar(title = { Text(text = "Chats", fontWeight = FontWeight.Bold) })
-        },
-        bottomBar = {
-            BottomNavigationMenu(
-                selectedItem = BottomNavigationItem.CHAT_LIST,
-                navController = navController
-            )
-        },
-        floatingActionButton = {
-            IconButton(
-                onClick = { vm.updateShowDialog(true) },
-                colors = IconButtonDefaults.iconButtonColors(MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
-            }
-        }
-    ) {
-        if (uiState.chats.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "No Chats Available",
-                    modifier = Modifier
+        Scaffold(
+            modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer),
+            topBar = {
+                TopAppBar(title = { Text(text = "Chats", fontWeight = FontWeight.Bold) })
+            },
+            bottomBar = {
+                BottomNavigationMenu(
+                    selectedItem = BottomNavigationItem.CHAT_LIST,
+                    navController = navController
                 )
+            },
+            floatingActionButton = {
+                IconButton(
+                    onClick = { vm.updateShowDialog(true) },
+                    colors = IconButtonDefaults.iconButtonColors(MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Icon(imageVector = Icons.Filled.Add, contentDescription = null)
+                }
             }
-        } else {
-            LazyColumn(modifier = Modifier.padding(it)) {
-                items(uiState.chats) {chat ->
-                    val chatUser = if (chat.user1.userId == uiState.userData.userId){
-                        chat.user2
-                    } else{
-                        chat.user1
-                    }
-
-                    Row(modifier = Modifier
-                        .padding(4.dp)
-                        .fillMaxWidth()
-                        .clickable {
-                        if (chat.chatId != ""){
-                            navigateTo(navController, DestinationScreen.SingleChat.createRoute(id = chat.chatId))
+        ) {
+            if (uiState.chats.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(it),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "No Chats Available",
+                        modifier = Modifier
+                    )
+                }
+            } else {
+                LazyColumn(modifier = Modifier.padding(it)) {
+                    items(uiState.chats) {chat ->
+                        val chatUser = if (chat.user1.userId == uiState.userData.userId){
+                            chat.user2
+                        } else{
+                            chat.user1
                         }
-                    }) {
-                        CommonImage(
-                            data = chatUser.imageUrl,
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.background)
-                                .size(50.dp)
-                                .padding(8.dp)
+                        CommonRow(
+                            chatUser = chatUser,
+                            navController = navController,
+                            destinationScreen = DestinationScreen.SingleChat.createRoute(id = chat.chatId)
                         )
-                        Text(text = chatUser.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp, top = 12.dp))
+
+//                        Row(modifier = Modifier
+//                            .padding(4.dp)
+//                            .fillMaxWidth()
+//                            .clickable {
+//                                if (chat.chatId != "") {
+//                                    navigateTo(
+//                                        navController,
+//                                        DestinationScreen.SingleChat.createRoute(id = chat.chatId)
+//                                    )
+//                                }
+//                            }) {
+//                            CommonImage(
+//                                data = chatUser.imageUrl,
+//                                modifier = Modifier
+//                                    .background(MaterialTheme.colorScheme.background)
+//                                    .size(50.dp)
+//                                    .padding(8.dp)
+//                            )
+//                            Text(text = chatUser.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp, top = 12.dp))
+//                        }
                     }
                 }
             }
